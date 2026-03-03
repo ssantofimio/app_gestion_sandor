@@ -20,6 +20,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
         */}
         <ScrollViewStyleReset />
 
+        <style dangerouslySetInnerHTML={{ __html: `body { background-color: #0f172a; }` }} />
+
         {/* Add any additional <head> elements that you want globally available on web... */}
       </head>
       <body>{children}</body>
