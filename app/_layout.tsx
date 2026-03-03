@@ -17,28 +17,6 @@ SplashScreen.preventAutoHideAsync().catch(() => {
   /* ignore error */
 });
 
-// INYECCIÓN CSS NATIVA PARA WEB:
-// Forzar al navegador a registrar la fuente MaterialCommunityIcons globalmente
-// ANTES de que React intente renderizar cualquier componente.
-if (Platform.OS === 'web') {
-  const iconFontStyles = `
-    @font-face {
-      src: url(${require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf')});
-      font-family: MaterialCommunityIcons;
-      display: block;
-    }
-  `;
-
-  // Crear la etiqueta <style> si no existe (previene duplicados por HMR)
-  if (!document.getElementById('material-community-icons-style')) {
-    const style = document.createElement('style');
-    style.id = 'material-community-icons-style';
-    style.appendChild(document.createTextNode(iconFontStyles));
-    document.head.appendChild(style);
-  }
-}
-
-
 const { LightTheme: AdaptedDefaultTheme } = adaptNavigationTheme({
   reactNavigationLight: DefaultTheme,
 });
@@ -156,11 +134,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a',
   },
   // Estilo para el priming de fuente
+  // No usamos opacity: 0 ni lo sacamos de la pantalla para evitar
+  // que el navegador optimice y se salte la carga real de la fuente
   fontPrimer: {
     position: 'absolute',
-    opacity: 0,
-    fontSize: 1,
+    color: 'transparent',
+    fontSize: 10,
     fontFamily: 'MaterialCommunityIcons',
-    left: -100,
   },
 });
