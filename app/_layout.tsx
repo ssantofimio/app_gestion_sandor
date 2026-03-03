@@ -37,14 +37,13 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
-  const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
     async function prepare() {
       try {
         console.log('[RootLayout] Iniciando pre-carga de activos...');
 
-        // 1. Cargar fuentes con alias duales para mayor compatibilidad en Web/Native
+        // 1. Cargar fuentes
         const fontPromise = Font.loadAsync({
           'MaterialCommunityIcons': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
           ...MaterialCommunityIcons.font,
@@ -58,18 +57,26 @@ export default function RootLayout() {
 
         const cacheImages = imageAssets.map(image => Asset.fromModule(image).downloadAsync());
 
-        // Esperar a que todo lo técnico esté descargado
+        // Esperar a que todo lo técnico esté descargado por Expo
         await Promise.all([fontPromise, ...cacheImages]);
+        console.log('[RootLayout] Activos descargados. Forzando compilación de fuentes a nivel nativo...');
 
-        // Renderiza el componente de font primer ahora que el archivo está en memoria
-        setFontsLoaded(true);
-        console.log('[RootLayout] Activos descargados. Esperando activación de fuentes en el DOM...');
-
-        // 3. BÚFER DE SEGURIDAD EXCLUSIVO PARA WEB: 
-        // Mientras setAppIsReady es false, el DOM de Web solo tendrá el custom web splash
-        // y el font primer. El navegador usará este tiempo para pintar la fuente.
-        const delay = Platform.OS === 'web' ? 1500 : 800;
-        await new Promise(resolve => setTimeout(resolve, delay));
+        // 3. EXPLÍCITO PARA WEB (CSSOM LOADING):
+        // En los navegadores modernos, la fuente no se rinde hasta que se asigna
+        // a un nodo. Para saltarnos el "cuadrito", obligamos a la API document.fonts
+        // a descargarla y alocarla en memoria para el layout de vectores clave.
+        if (Platform.OS === 'web') {
+          try {
+            // "\uF013" y otros son unicodes comúnmente parseados y forzamos su carga 
+            await document.fonts.load('24px MaterialCommunityIcons');
+          } catch (e) {
+            console.warn("document.fonts no soportado en este navegador", e);
+          }
+          await new Promise(resolve => setTimeout(resolve, 300)); // Pequeña latencia post-API
+        } else {
+          // Buffer de seguridad clásico en Native (Android/iOS)
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
 
       } catch (e) {
         console.warn('Error durante la pre-carga:', e);
@@ -84,7 +91,7 @@ export default function RootLayout() {
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady) {
       console.log('[RootLayout] Layout listo. Ocultando Splash Screen Nativa.');
-      // Ocultar la splash screen ahora que el root view está listo
+      // Ocultar la splash screen ahora que el root view está pintado
       setTimeout(async () => {
         await SplashScreen.hideAsync();
       }, 100);
@@ -92,21 +99,8 @@ export default function RootLayout() {
   }, [appIsReady]);
 
   if (!appIsReady) {
-    // EN WEB: Esto actúa como la Splash Screen mientras el navegador procesa la fuente.
-    // Usamos los mismos componentes MaterialCommunityIcons reales para forzar toda 
-    // su inicialidad en react-native-web antes de pasar al login.
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
-        {fontsLoaded && (
-          <View style={styles.fontPrimer}>
-            <MaterialCommunityIcons name="account-outline" size={24} />
-            <MaterialCommunityIcons name="lock-outline" size={24} />
-            <MaterialCommunityIcons name="eye-outline" size={24} />
-            <MaterialCommunityIcons name="eye-off-outline" size={24} />
-          </View>
-        )}
-      </View>
-    );
+    // Al devolver null, mantenemos activo el DOM css overlay original de Expo Router en Web.
+    return null;
   }
 
   return (
@@ -115,7 +109,7 @@ export default function RootLayout() {
       onLayout={onLayoutRootView}
     >
       <PaperProvider theme={theme}>
-        <ThemeProvider value={AdaptedDefaultTheme}>
+        <ThemeProvider value={AdaptedDefaultTheme as any}>
           <Stack screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: '#0f172a' }
@@ -135,11 +129,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f172a',
-  },
-  // Hacemos que los iconos primario estén presentes pero sean casi invisibles 
-  // (0.01 opacity es detectado por pintura pero no visible)
-  fontPrimer: {
-    position: 'absolute',
-    opacity: 0.01,
   },
 });
