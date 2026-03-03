@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform, Text as RNText } from 'react-native';
 import 'react-native-reanimated';
 import { MD3LightTheme, PaperProvider, adaptNavigationTheme } from 'react-native-paper';
 import * as SplashScreen from 'expo-splash-screen';
@@ -37,14 +37,18 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
     async function prepare() {
       try {
         console.log('[RootLayout] Iniciando pre-carga de activos...');
 
-        // 1. Cargar fuentes e iconos
+        // 1. Cargar fuentes con alias duales para mayor compatibilidad en Web/Native
+        // 'material-community' es el nombre que usa @expo/vector-icons internamente en web
         const fontPromise = Font.loadAsync({
+          'MaterialCommunityIcons': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
+          'material-community': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
           ...MaterialCommunityIcons.font,
         });
 
@@ -58,14 +62,16 @@ export default function RootLayout() {
           return Asset.fromModule(image).downloadAsync();
         });
 
-        // Esperar a que todo lo técnico esté listo
+        // Esperar a que todo lo técnico esté descargado
         await Promise.all([fontPromise, ...cacheImages]);
+        setFontsLoaded(true);
 
-        console.log('[RootLayout] Activos cargados. Esperando renderizado...');
+        console.log('[RootLayout] Activos descargados. Esperando activación de fuentes...');
 
-        // 3. BÚFER DE SEGURIDAD: Esperar un poco más para asegurar que 
-        // los glifos de la fuente se hayan registrado en el motor de renderizado.
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // 3. BÚFER DE SEGURIDAD PROLONGADO PARA WEB: 
+        // En Web, el navegador necesita un momento extra para inyectar y procesar el @font-face
+        const delay = Platform.OS === 'web' ? 1200 : 800;
+        await new Promise(resolve => setTimeout(resolve, delay));
 
       } catch (e) {
         console.warn('Error durante la pre-carga:', e);
@@ -80,13 +86,14 @@ export default function RootLayout() {
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady) {
       console.log('[RootLayout] Layout listo. Ocultando Splash Screen.');
-      // Ocultar la splash screen ahora que el root view está listo
-      await SplashScreen.hideAsync();
+      // Pequeño delay adicional tras el layout para asegurar el paint
+      setTimeout(async () => {
+        await SplashScreen.hideAsync();
+      }, 100);
     }
   }, [appIsReady]);
 
   if (!appIsReady) {
-    // Mientras no esté listo, devolvemos null para que el sistema mantenga la Splash Screen
     return null;
   }
 
@@ -97,6 +104,13 @@ export default function RootLayout() {
     >
       <PaperProvider theme={theme}>
         <ThemeProvider value={AdaptedDefaultTheme}>
+          {/* Componente de Priming: Fuerza al navegador a cargar los glifos antes de mostrar la UI */}
+          {fontsLoaded && (
+            <RNText style={styles.fontPrimer}>
+              {"\u0000"} {/* Carácter nulo para disparar el font-loader sin mostrar nada */}
+            </RNText>
+          )}
+
           <Stack screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: '#0f172a' }
@@ -115,6 +129,14 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a', // Coincide con el color de login y app.json
+    backgroundColor: '#0f172a',
+  },
+  // Estilo para el priming de fuente
+  fontPrimer: {
+    position: 'absolute',
+    opacity: 0,
+    fontSize: 1,
+    fontFamily: 'MaterialCommunityIcons',
+    left: -100,
   },
 });
