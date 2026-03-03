@@ -45,10 +45,8 @@ export default function RootLayout() {
         console.log('[RootLayout] Iniciando pre-carga de activos...');
 
         // 1. Cargar fuentes con alias duales para mayor compatibilidad en Web/Native
-        // 'material-community' es el nombre que usa @expo/vector-icons internamente en web
         const fontPromise = Font.loadAsync({
           'MaterialCommunityIcons': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
-          'material-community': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
           ...MaterialCommunityIcons.font,
         });
 
@@ -58,19 +56,19 @@ export default function RootLayout() {
           require('../assets/images/splash-icon.png'),
         ];
 
-        const cacheImages = imageAssets.map(image => {
-          return Asset.fromModule(image).downloadAsync();
-        });
+        const cacheImages = imageAssets.map(image => Asset.fromModule(image).downloadAsync());
 
         // Esperar a que todo lo técnico esté descargado
         await Promise.all([fontPromise, ...cacheImages]);
+
+        // Renderiza el componente de font primer ahora que el archivo está en memoria
         setFontsLoaded(true);
+        console.log('[RootLayout] Activos descargados. Esperando activación de fuentes en el DOM...');
 
-        console.log('[RootLayout] Activos descargados. Esperando activación de fuentes...');
-
-        // 3. BÚFER DE SEGURIDAD PROLONGADO PARA WEB: 
-        // En Web, el navegador necesita un momento extra para inyectar y procesar el @font-face
-        const delay = Platform.OS === 'web' ? 1200 : 800;
+        // 3. BÚFER DE SEGURIDAD EXCLUSIVO PARA WEB: 
+        // Mientras setAppIsReady es false, el DOM de Web solo tendrá el custom web splash
+        // y el font primer. El navegador usará este tiempo para pintar la fuente.
+        const delay = Platform.OS === 'web' ? 1500 : 800;
         await new Promise(resolve => setTimeout(resolve, delay));
 
       } catch (e) {
@@ -85,8 +83,8 @@ export default function RootLayout() {
 
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady) {
-      console.log('[RootLayout] Layout listo. Ocultando Splash Screen.');
-      // Pequeño delay adicional tras el layout para asegurar el paint
+      console.log('[RootLayout] Layout listo. Ocultando Splash Screen Nativa.');
+      // Ocultar la splash screen ahora que el root view está listo
       setTimeout(async () => {
         await SplashScreen.hideAsync();
       }, 100);
@@ -94,7 +92,18 @@ export default function RootLayout() {
   }, [appIsReady]);
 
   if (!appIsReady) {
-    return null;
+    // EN WEB: Esto actúa como la Splash Screen mientras el navegador procesa la fuente.
+    // EN NATIVO: Esto queda oculto detrás de la Splash Screen nativa.
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+        {fontsLoaded && (
+          <RNText style={styles.fontPrimer}>
+            {/* Un caracter común de MaterialCommunityIcons para forzar la carga del glifo */}
+            &#xF0A4;
+          </RNText>
+        )}
+      </View>
+    );
   }
 
   return (
@@ -104,13 +113,6 @@ export default function RootLayout() {
     >
       <PaperProvider theme={theme}>
         <ThemeProvider value={AdaptedDefaultTheme}>
-          {/* Componente de Priming: Fuerza al navegador a cargar los glifos antes de mostrar la UI */}
-          {fontsLoaded && (
-            <RNText style={styles.fontPrimer}>
-              {"\u0000"} {/* Carácter nulo para disparar el font-loader sin mostrar nada */}
-            </RNText>
-          )}
-
           <Stack screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: '#0f172a' }
