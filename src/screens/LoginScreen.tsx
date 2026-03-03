@@ -64,7 +64,10 @@ export default function LoginScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.innerContainer}
             >
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                >
                     <View style={styles.logoContainer}>
                         <View style={styles.logoCircle}>
                             <Image
@@ -133,11 +136,14 @@ export default function LoginScreen() {
                             ¿Olvidaste tu contraseña?
                         </Button>
                     </View>
-                </ScrollView>
 
-                <View style={styles.footer}>
-                    <Text variant="labelSmall" style={styles.footerText}>© 2026 Gestión Sandor S.A.S</Text>
-                </View>
+                    {/* Espaciador flexible para empujar el footer al fondo */}
+                    <View style={{ flex: 1, minHeight: 40 }} />
+
+                    <View style={styles.footer}>
+                        <Text variant="labelSmall" style={styles.footerText}>© 2026 Gestión Sandor S.A.S</Text>
+                    </View>
+                </ScrollView>
             </KeyboardAvoidingView>
         </LinearGradient>
     );
@@ -155,7 +161,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 30,
         paddingTop: 50,
-        paddingBottom: 100,
+        paddingBottom: 40,
     },
     logoContainer: {
         alignItems: 'center',
@@ -215,10 +221,9 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     footer: {
-        position: 'absolute',
-        bottom: 40,
         width: '100%',
         alignItems: 'center',
+        paddingBottom: 20,
     },
     footerText: {
         color: '#64748b',
