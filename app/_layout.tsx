@@ -1,10 +1,17 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { MD3LightTheme, PaperProvider, adaptNavigationTheme } from 'react-native-paper';
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts } from 'expo-font';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
+// Evitar que la pantalla de inicio se oculte automáticamente
+SplashScreen.preventAutoHideAsync();
 
 const { LightTheme: AdaptedDefaultTheme } = adaptNavigationTheme({
   reactNavigationLight: DefaultTheme,
@@ -26,6 +33,21 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  // Cargar fuentes críticas antes de renderizar
+  const [loaded, error] = useFonts({
+    ...MaterialCommunityIcons.font,
+  });
+
+  useEffect(() => {
+    if (loaded || error) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, error]);
+
+  if (!loaded && !error) {
+    return null;
+  }
 
   return (
     <PaperProvider theme={theme}>
