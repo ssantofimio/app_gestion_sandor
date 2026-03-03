@@ -1,7 +1,8 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useCallback } from 'react';
+import { View } from 'react-native';
 import 'react-native-reanimated';
 import { MD3LightTheme, PaperProvider, adaptNavigationTheme } from 'react-native-paper';
 import * as SplashScreen from 'expo-splash-screen';
@@ -10,7 +11,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-// Evitar que la pantalla de inicio se oculte automáticamente
+// Mantener la splash screen visible hasta que decidamos ocultarla
 SplashScreen.preventAutoHideAsync();
 
 const { LightTheme: AdaptedDefaultTheme } = adaptNavigationTheme({
@@ -33,15 +34,17 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-
-  // Cargar fuentes críticas antes de renderizar
+  
+  // Cargar fuentes necesarias
   const [loaded, error] = useFonts({
     ...MaterialCommunityIcons.font,
   });
 
-  useEffect(() => {
+  // Función para ocultar la Splash Screen cuando el layout esté listo
+  const onLayoutRootView = useCallback(async () => {
     if (loaded || error) {
-      SplashScreen.hideAsync();
+      // Ocultar la Splash Screen
+      await SplashScreen.hideAsync();
     }
   }, [loaded, error]);
 
@@ -50,15 +53,17 @@ export default function RootLayout() {
   }
 
   return (
-    <PaperProvider theme={theme}>
-      <ThemeProvider value={AdaptedDefaultTheme}>
-        <Stack>
-          <Stack.Screen name="login" options={{ headerShown: false, title: 'Iniciar Sesión' }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </PaperProvider>
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+      <PaperProvider theme={theme}>
+        <ThemeProvider value={AdaptedDefaultTheme}>
+          <Stack>
+            <Stack.Screen name="login" options={{ headerShown: false, title: 'Iniciar Sesión' }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </PaperProvider>
+    </View>
   );
 }
