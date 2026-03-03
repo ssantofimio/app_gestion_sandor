@@ -93,14 +93,17 @@ export default function RootLayout() {
 
   if (!appIsReady) {
     // EN WEB: Esto actúa como la Splash Screen mientras el navegador procesa la fuente.
-    // EN NATIVO: Esto queda oculto detrás de la Splash Screen nativa.
+    // Usamos los mismos componentes MaterialCommunityIcons reales para forzar toda 
+    // su inicialidad en react-native-web antes de pasar al login.
     return (
       <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
         {fontsLoaded && (
-          <RNText style={styles.fontPrimer}>
-            {/* Un caracter común de MaterialCommunityIcons para forzar la carga del glifo */}
-            &#xF0A4;
-          </RNText>
+          <View style={styles.fontPrimer}>
+            <MaterialCommunityIcons name="account-outline" size={24} />
+            <MaterialCommunityIcons name="lock-outline" size={24} />
+            <MaterialCommunityIcons name="eye-outline" size={24} />
+            <MaterialCommunityIcons name="eye-off-outline" size={24} />
+          </View>
         )}
       </View>
     );
@@ -133,13 +136,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f172a',
   },
-  // Estilo para el priming de fuente
-  // No usamos opacity: 0 ni lo sacamos de la pantalla para evitar
-  // que el navegador optimice y se salte la carga real de la fuente
+  // Hacemos que los iconos primario estén presentes pero sean casi invisibles 
+  // (0.01 opacity es detectado por pintura pero no visible)
   fontPrimer: {
     position: 'absolute',
-    color: 'transparent',
-    fontSize: 10,
-    fontFamily: 'MaterialCommunityIcons',
+    opacity: 0.01,
   },
 });
